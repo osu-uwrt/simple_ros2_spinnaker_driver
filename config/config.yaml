@@ -1,0 +1,11 @@
+/**/spinnaker_node:
+  __ros_parameters:
+    camera0:
+      topic: "left"
+      frame: "stereo/left"
+      serial: "14432788"
+    #this camera doesnt exist yet
+    camera1:
+      topic: "right"
+      frame: "stereo/right"
+      serial: "12345678"
