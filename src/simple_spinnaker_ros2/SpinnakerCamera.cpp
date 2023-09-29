@@ -32,6 +32,11 @@ SpinnakerCamera::SpinnakerCamera(
 void SpinnakerCamera::init()
 {
     ptr->Init();
+    ptr->ExposureAuto.SetValue(Spinnaker::ExposureAuto_Off);
+    ptr->ExposureMode.SetValue(Spinnaker::ExposureMode_Timed);
+    ptr->ExposureTime.SetValue(30000);
+    ptr->TriggerMode.SetValue(Spinnaker::TriggerMode_On);
+    ptr->TriggerOverlap.SetValue(Spinnaker::TriggerOverlap_ReadOut);
     
     if(!ptr->IsValid())
     {

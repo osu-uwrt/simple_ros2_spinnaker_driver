@@ -6,7 +6,7 @@
 
 using namespace std::chrono_literals;
 
-const char *TMP_SERIAL = "14432788";
+const char *TMP_SERIAL = "14432788"; //15662023
 
 struct CameraConfig {
     std::string
@@ -153,7 +153,7 @@ class SpinnakerNode : public rclcpp::Node {
                 } catch(Spinnaker::Exception& ex)
                 {
                     RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Spinnaker::Exception: %s", ex.what());
-                    camerasToReinit.push_back(i);
+                    // camerasToReinit.push_back(i);
                 }
             }
 
