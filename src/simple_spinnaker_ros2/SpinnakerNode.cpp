@@ -6,13 +6,12 @@
 
 using namespace std::chrono_literals;
 
-const char *TMP_SERIAL = "14432788"; //15662023
-
 struct CameraConfig {
     std::string
         topic,
         frame,
         serial;
+    bool hardwareTrigger;
 };
 
 struct SpinnakerCameraAndConfig {
@@ -26,7 +25,7 @@ class SpinnakerNode : public rclcpp::Node {
      : rclcpp::Node("spinnaker_node")
     {
         postproc = std::make_shared<Spinnaker::ImageProcessor>();
-        postproc->SetColorProcessing(Spinnaker::SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR);        
+        postproc->SetColorProcessing(Spinnaker::SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR);
     }
 
 
@@ -35,24 +34,25 @@ class SpinnakerNode : public rclcpp::Node {
         std::string cameraName = "camera" + std::to_string(idx);
 
         CameraConfig config;
-        config.topic = this->get_parameter(cameraName + ".left").as_string();
+        config.topic = this->get_parameter(cameraName + ".topic").as_string();
         config.frame = this->get_parameter(cameraName + ".frame").as_string(); 
         config.serial = this->get_parameter(cameraName + ".serial").as_string();
-
+        config.hardwareTrigger = this->get_parameter(cameraName + ".hardware_trigger").as_bool();
         return config;
     }
 
 
-    std::list<CameraConfig> readParameters()
+    std::vector<CameraConfig> readParameters()
     {
         RCLCPP_INFO(this->get_logger(), "Reading Parameters");
-        std::list<CameraConfig> cameraConfigs;
+        std::vector<CameraConfig> cameraConfigs;
 
         //declare initial params
-        this->declare_parameter("camera0.left", "");
+        this->declare_parameter("camera0.topic", "");
         this->declare_parameter("camera0.frame", "");
         this->declare_parameter("camera0.serial", "");
-        
+        this->declare_parameter("camera0.hardware_trigger", false);
+
         int cameraId = 0;
         CameraConfig config = readParametersForCamera(cameraId);
         while(
@@ -63,23 +63,18 @@ class SpinnakerNode : public rclcpp::Node {
             cameraConfigs.push_back(config);
             cameraId++;
             std::string cameraName = "camera" + std::to_string(cameraId);
-            this->declare_parameter(cameraName + ".left", "");
+            this->declare_parameter(cameraName + ".topic", "");
             this->declare_parameter(cameraName + ".frame", ""); 
             this->declare_parameter(cameraName + ".serial", "");
+            this->declare_parameter(cameraName + ".hardware_trigger", false);
             config = readParametersForCamera(cameraId);
         }
         
-        //TODO: read params here
-        CameraConfig tmp;
-        tmp.topic = "left";
-        tmp.frame = "tmp/left";
-        tmp.serial = TMP_SERIAL;
-        cameraConfigs.push_back(tmp);
         return cameraConfigs;
     }
 
 
-    void init(image_transport::ImageTransport& it, std::list<CameraConfig> cameraConfigs)
+    void init(image_transport::ImageTransport& it, std::vector<CameraConfig> cameraConfigs)
     {
         //initialize spinnaker and cameras
         RCLCPP_INFO(this->get_logger(), "Initializing Spinnaker");
@@ -95,7 +90,7 @@ class SpinnakerNode : public rclcpp::Node {
             {
                 SpinnakerCameraAndConfig newCamera;
                 newCamera.config = config;
-                newCamera.camera = std::make_shared<SpinnakerCamera>(it, config.topic, config.frame, cameras, config.serial, postproc);
+                newCamera.camera = std::make_shared<SpinnakerCamera>(it, config.topic, config.frame, config.serial, config.hardwareTrigger, cameras, postproc);
                 newCamera.camera->init();
                 openedCams.push_back(newCamera);
 
@@ -138,8 +133,6 @@ class SpinnakerNode : public rclcpp::Node {
 
         while(rclcpp::ok())
         {
-            //TODO: implement synchronous trigger
-
             //instruct all cameras to publish images captured during this trigger
             rclcpp::Time now = this->get_clock()->now();
             for(size_t i = 0; i < openedCams.size(); i++)
@@ -149,10 +142,10 @@ class SpinnakerNode : public rclcpp::Node {
                     openedCams[i].camera->readAndPublish(now);
                 } catch(std::runtime_error& ex)
                 {
-                    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500, "std::runtime_error: %s", ex.what());
+                    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500, "std::runtime_error when updating %s: %s", openedCams[i].config.topic.c_str(), ex.what());
                 } catch(Spinnaker::Exception& ex)
                 {
-                    RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Spinnaker::Exception: %s", ex.what());
+                    RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Spinnaker::Exception when updating %s: %s", openedCams[i].config.topic.c_str(), ex.what());
                     // camerasToReinit.push_back(i);
                 }
             }
@@ -226,18 +219,18 @@ int main(int argc, char **argv)
             std::cout << "  Options:\n";
             std::cout << "   -h, --help: Display this help text and exit\n";
             std::cout << "   -l, --list: List connected cameras and their serial numbers and exit." << std::endl;
+            return 0;
         } else if(strcmp(argv[1], "-l") == 0 || strcmp(argv[1], "--list") == 0)
         {
             listConnectedCameras();
+            return 0;
         }
-
-        return 0;
     }
 
     rclcpp::init(argc, argv);
     std::shared_ptr<SpinnakerNode> node = std::make_shared<SpinnakerNode>();
     image_transport::ImageTransport it(node);
-    std::list<CameraConfig> cameraConfigs = node->readParameters();
+    std::vector<CameraConfig> cameraConfigs = node->readParameters();
 
     if(cameraConfigs.size() == 0)
     {

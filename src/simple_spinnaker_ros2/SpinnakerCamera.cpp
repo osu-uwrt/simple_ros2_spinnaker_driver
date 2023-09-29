@@ -9,12 +9,14 @@ SpinnakerCamera::SpinnakerCamera(
     image_transport::ImageTransport& it,
     const std::string& topic,
     const std::string& frame,
-    Spinnaker::CameraList cameras,
     const std::string& serial,
+    bool hardwareTrigger,
+    Spinnaker::CameraList cameras,
     std::shared_ptr<Spinnaker::ImageProcessor> postprocessor)
  : topic(topic),
    frame(frame),
    serial(serial),
+   hardwareTrigger(hardwareTrigger),
    cameras(cameras),
    postprocessor(postprocessor)
 {
@@ -35,8 +37,15 @@ void SpinnakerCamera::init()
     ptr->ExposureAuto.SetValue(Spinnaker::ExposureAuto_Off);
     ptr->ExposureMode.SetValue(Spinnaker::ExposureMode_Timed);
     ptr->ExposureTime.SetValue(30000);
-    ptr->TriggerMode.SetValue(Spinnaker::TriggerMode_On);
-    ptr->TriggerOverlap.SetValue(Spinnaker::TriggerOverlap_ReadOut);
+
+    //todo: set this on node map the "proper" way
+    ptr->AcquisitionMode.SetValue(Spinnaker::AcquisitionMode_Continuous);
+
+    if(hardwareTrigger)
+    {
+        ptr->TriggerMode.SetValue(Spinnaker::TriggerMode_On);
+        ptr->TriggerOverlap.SetValue(Spinnaker::TriggerOverlap_ReadOut);
+    }
     
     if(!ptr->IsValid())
     {

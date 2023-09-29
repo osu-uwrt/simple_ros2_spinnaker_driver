@@ -17,8 +17,9 @@ class SpinnakerCamera {
         image_transport::ImageTransport& it, 
         const std::string& topic,
         const std::string& frame,
-        Spinnaker::CameraList cameras, 
         const std::string& serial,
+        bool hardwareTrigger,
+        Spinnaker::CameraList cameras,
         std::shared_ptr<Spinnaker::ImageProcessor> postprocessor);
     
     void init();
@@ -31,6 +32,7 @@ class SpinnakerCamera {
         topic, 
         frame,
         serial;
+    const bool hardwareTrigger;
     image_transport::Publisher pub;
     Spinnaker::CameraPtr ptr;
     Spinnaker::CameraList cameras;
