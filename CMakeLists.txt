@@ -21,7 +21,7 @@ find_package(image_transport REQUIRED)
 #
 # configure executables
 #
-file(GLOB sources src/simple_spinnaker_ros2/*.cpp)
+file(GLOB sources src/simple_ros2_spinnaker_driver/*.cpp)
 add_executable(spinnaker_node
   ${sources})
 

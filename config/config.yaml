@@ -1,13 +1,11 @@
 /**/spinnaker_node:
   ros__parameters:
-    camera0:
-      topic: "left"
-      frame: "stereo/left"
-      serial: "14432788"
-      hardware_trigger: false
-    #this camera doesnt exist yet
-    camera1:
-      topic: "right"
-      frame: "stereo/right"
-      serial: "15662023"
-      hardware_trigger: false
+    stereo:
+      topic: "stereo" #TODO: renmae
+      frame: "stereo_frame"
+      left:
+        serial: "14432788"
+        hardware_trigger: false
+      right:
+        serial: "15662023"
+        hardware_trigger: false
