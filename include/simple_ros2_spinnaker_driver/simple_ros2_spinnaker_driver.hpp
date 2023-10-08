@@ -14,7 +14,7 @@
 
 struct CameraConfig {
     std::string serial;
-    bool hardwareTrigger;
+    bool isMaster;
 };
 
 

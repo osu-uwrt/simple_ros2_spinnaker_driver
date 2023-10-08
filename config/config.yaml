@@ -5,7 +5,7 @@
       frame: "stereo_frame"
       left:
         serial: "14432788"
-        hardware_trigger: false
+        hardware_trigger: true
       right:
-        serial: "15662023"
+        serial: "14490542"
         hardware_trigger: false

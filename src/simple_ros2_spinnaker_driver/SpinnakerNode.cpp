@@ -33,7 +33,7 @@ class SpinnakerNode : public rclcpp::Node {
     {
         CameraConfig config;
         config.serial = declareAndGetParameter<std::string>(prefix + ".serial", "").as_string();
-        config.hardwareTrigger = declareAndGetParameter<bool>(prefix + ".hardware_trigger", "").as_bool();
+        config.isMaster = declareAndGetParameter<bool>(prefix + ".hardware_trigger", "").as_bool();
         return config;
     }
 
