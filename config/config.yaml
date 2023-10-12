@@ -4,8 +4,8 @@
       topic: "stereo" #TODO: renmae
       frame: "stereo_frame"
       left:
-        serial: "14432788"
+        serial: "14490542"
         hardware_trigger: true
       right:
-        serial: "14490542"
+        serial: "15662023"
         hardware_trigger: false

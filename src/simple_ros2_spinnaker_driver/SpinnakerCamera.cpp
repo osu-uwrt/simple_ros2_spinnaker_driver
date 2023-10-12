@@ -22,6 +22,13 @@ SpinnakerCamera::SpinnakerCamera(
 
     Spinnaker::GenApi::INodeMap &nodeMap = ptr->GetNodeMap();
 
+    // Reset to factory default
+    Spinnaker::GenApi::CEnumerationPtr ptrUserSetSelector = nodeMap.GetNode("UserSetSelector");
+    Spinnaker::GenApi::CEnumEntryPtr ptrUserSetSelectorDefault = ptrUserSetSelector->GetEntryByName("Default");
+    ptrUserSetSelector->SetIntValue(ptrUserSetSelectorDefault->GetValue());
+    Spinnaker::GenApi::CCommandPtr ptrUserSetLoad = nodeMap.GetNode("UserSetLoad");
+    ptrUserSetLoad->Execute();
+
     // todo: set this on node map the "proper" way
     ptr->AcquisitionMode.SetValue(Spinnaker::AcquisitionMode_Continuous);
 
@@ -32,19 +39,19 @@ SpinnakerCamera::SpinnakerCamera(
     Spinnaker::GenApi::CFloatPtr exposureTime = nodeMap.GetNode("ExposureTime");
     exposureTime->SetValue(20000);
 
-    Spinnaker::GenApi::CEnumerationPtr triggerMode = nodeMap.GetNode("TriggerMode");
-    triggerMode->SetIntValue(triggerMode->GetEntryByName("On")->GetValue());
-
-    Spinnaker::GenApi::CEnumerationPtr triggerSource = nodeMap.GetNode("TriggerSource");
-    triggerSource->SetIntValue(triggerSource->GetEntryByName("Line0")->GetValue());
-
     if (config.isMaster)
     {
-
+        std::cout << config.serial << std::endl;
+        Spinnaker::GenApi::CEnumerationPtr triggerSource = nodeMap.GetNode("TriggerSource");
+        triggerSource->SetIntValue(triggerSource->GetEntryByName("Line0")->GetValue());
         Spinnaker::GenApi::CEnumerationPtr triggerSelector = nodeMap.GetNode("TriggerSelector");
         triggerSelector->SetIntValue(triggerSelector->GetEntryByName("FrameStart")->GetValue());
         Spinnaker::GenApi::CEnumerationPtr triggerActivation = nodeMap.GetNode("TriggerActivation");
         triggerActivation->SetIntValue(triggerActivation->GetEntryByName("RisingEdge")->GetValue());
+
+        Spinnaker::GenApi::CEnumerationPtr triggerMode = nodeMap.GetNode("TriggerMode");
+        triggerMode->SetIntValue(triggerMode->GetEntryByName("On")->GetValue());
+
         Spinnaker::GenApi::CEnumerationPtr ptrTriggerOverlap = nodeMap.GetNode("TriggerOverlap");
         Spinnaker::GenApi::CEnumEntryPtr ptrTriggerOverlapReadOut = ptrTriggerOverlap->GetEntryByName("ReadOut");
         ptrTriggerOverlap->SetIntValue(ptrTriggerOverlapReadOut->GetValue());
@@ -54,21 +61,28 @@ SpinnakerCamera::SpinnakerCamera(
         ptrLineSelector->SetIntValue(ptrLineSelectorLine1->GetValue());
 
         Spinnaker::GenApi::CEnumerationPtr ptrLineMode = nodeMap.GetNode("LineMode");
-        Spinnaker::GenApi::CEnumEntryPtr ptrLineModeOutput = ptrLineMode->GetEntryByName("Output");
+        Spinnaker::GenApi::CEnumEntryPtr ptrLineModeOutput = ptrLineMode->GetEntryByName("Strobe");
         ptrLineMode->SetIntValue(ptrLineModeOutput->GetValue());
 
-        // Spinnaker::GenApi::CEnumerationPtr ptrLineSource = nodeMap.GetNode("LineSource");
-        // Spinnaker::GenApi::CEnumEntryPtr ptrLineSourceExposureActive = ptrLineSource->GetEntryByName("ExposureActive");
-        // ptrLineSource->SetIntValue(ptrLineSourceExposureActive->GetValue());
+        Spinnaker::GenApi::CEnumerationPtr ptrLineSource = nodeMap.GetNode("LineSource");
+        Spinnaker::GenApi::CEnumEntryPtr ptrLineSourceExposureActive = ptrLineSource->GetEntryByName("ExposureActive");
+        ptrLineSource->SetIntValue(ptrLineSourceExposureActive->GetValue());
     }
     else
     {
+        Spinnaker::GenApi::CEnumerationPtr triggerSource = nodeMap.GetNode("TriggerSource");
+        triggerSource->SetIntValue(triggerSource->GetEntryByName("Line0")->GetValue());
+        Spinnaker::GenApi::CEnumerationPtr triggerSelector = nodeMap.GetNode("TriggerSelector");
+        triggerSelector->SetIntValue(triggerSelector->GetEntryByName("FrameStart")->GetValue());
+        Spinnaker::GenApi::CEnumerationPtr triggerActivation = nodeMap.GetNode("TriggerActivation");
+        triggerActivation->SetIntValue(triggerActivation->GetEntryByName("RisingEdge")->GetValue());
+
+        Spinnaker::GenApi::CEnumerationPtr triggerMode = nodeMap.GetNode("TriggerMode");
+        triggerMode->SetIntValue(triggerMode->GetEntryByName("On")->GetValue());
+
         Spinnaker::GenApi::CEnumerationPtr ptrTriggerOverlap = nodeMap.GetNode("TriggerOverlap");
         Spinnaker::GenApi::CEnumEntryPtr ptrTriggerOverlapReadOut = ptrTriggerOverlap->GetEntryByName("ReadOut");
         ptrTriggerOverlap->SetIntValue(ptrTriggerOverlapReadOut->GetValue());
-
-        Spinnaker::GenApi::CEnumerationPtr triggerActivation = nodeMap.GetNode("TriggerActivation");
-        triggerActivation->SetIntValue(triggerActivation->GetEntryByName("RisingEdge")->GetValue());
     }
 
     if (!ptr->IsValid())

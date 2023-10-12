@@ -1,5 +1,6 @@
 #include "simple_ros2_spinnaker_driver/simple_ros2_spinnaker_driver.hpp"
 #include <sensor_msgs/image_encodings.hpp>
+#include <thread>
 
 /**
  * Source file for the StereoImagePublisher class.
@@ -28,9 +29,11 @@ void StereoImagePublisher::release()
 
 void StereoImagePublisher::readImage(sensor_msgs::msg::Image& msg) 
 {
-    Spinnaker::ImagePtr 
-        leftImage = leftCamera.getImage(),
-        rightImage = rightCamera.getImage();
+    std::future<Spinnaker::ImagePtr> rightImageFuture = std::async(&SpinnakerCamera::getImage, &rightCamera);
+    std::future<Spinnaker::ImagePtr> leftImageFuture = std::async(&SpinnakerCamera::getImage, &leftCamera);
+
+    Spinnaker::ImagePtr leftImage = leftImageFuture.get();
+    Spinnaker::ImagePtr rightImage = rightImageFuture.get();
     
     //check that image sizes are the same. This doesnt work if they are not
     int
@@ -62,6 +65,6 @@ void StereoImagePublisher::readImage(sensor_msgs::msg::Image& msg)
     
     size_t sz = msg.step * leftHeight;
     msg.data.resize(sz * 2);
-    memcpy(reinterpret_cast<char *>(&msg.data[0]), leftImage->GetData(), sz);
-    memcpy(reinterpret_cast<char *>(&msg.data[sz]), rightImage->GetData(), sz);
+    memcpy(reinterpret_cast<char *>(&msg.data[0]), leftImage.get()->GetData(), sz);
+    memcpy(reinterpret_cast<char *>(&msg.data[sz]), rightImage.get()->GetData(), sz);
 }

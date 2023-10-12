@@ -6,21 +6,20 @@
 
 using namespace std::chrono_literals;
 
-
-class SpinnakerNode : public rclcpp::Node {
-    public:
+class SpinnakerNode : public rclcpp::Node
+{
+public:
     SpinnakerNode()
-     : rclcpp::Node("spinnaker_node")
+        : rclcpp::Node("spinnaker_node")
     {
         postproc = std::make_shared<Spinnaker::ImageProcessor>();
         postproc->SetColorProcessing(Spinnaker::SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR);
     }
 
-
-    template<typename T>
-    rclcpp::Parameter declareAndGetParameter(const std::string& name, const T& defaultValue)
+    template <typename T>
+    rclcpp::Parameter declareAndGetParameter(const std::string &name, const T &defaultValue)
     {
-        if(!this->has_parameter(name))
+        if (!this->has_parameter(name))
         {
             this->declare_parameter(name, defaultValue);
         }
@@ -28,8 +27,7 @@ class SpinnakerNode : public rclcpp::Node {
         return this->get_parameter(name);
     }
 
-
-    CameraConfig readCameraConfigFromParams(const std::string& prefix)
+    CameraConfig readCameraConfigFromParams(const std::string &prefix)
     {
         CameraConfig config;
         config.serial = declareAndGetParameter<std::string>(prefix + ".serial", "").as_string();
@@ -37,8 +35,7 @@ class SpinnakerNode : public rclcpp::Node {
         return config;
     }
 
-
-    PublisherConfig readPublisherConfigFromParams(const std::string& prefix)
+    PublisherConfig readPublisherConfigFromParams(const std::string &prefix)
     {
         PublisherConfig config;
         config.topic = declareAndGetParameter<std::string>(prefix + ".topic", "").as_string();
@@ -46,75 +43,74 @@ class SpinnakerNode : public rclcpp::Node {
         return config;
     }
 
-
-    bool isPublisherConfigDefined(const PublisherConfig& config)
+    bool isPublisherConfigDefined(const PublisherConfig &config)
     {
-        return
-            config.frame.length() > 0
-            && config.topic.length() > 0;
+        return config.frame.length() > 0 && config.topic.length() > 0;
     }
 
-
-    bool isCameraConfigDefined(const CameraConfig& config)
+    bool isCameraConfigDefined(const CameraConfig &config)
     {
         return config.serial.length() > 0;
     }
 
-
-    void init(image_transport::ImageTransport& it)
+    void init(image_transport::ImageTransport &it)
     {
-        //initialize spinnaker and cameras
+        // initialize spinnaker and cameras
         RCLCPP_INFO(this->get_logger(), "Initializing Spinnaker");
         system = Spinnaker::System::GetInstance();
         cameras = system->GetCameras();
 
         RCLCPP_INFO(this->get_logger(), "Reading parameters");
 
-        //dont need cam mutex to access because thread isnt started yet
+        // dont need cam mutex to access because thread isnt started yet
         PublisherConfig pubConfig = readPublisherConfigFromParams("mono");
-        if(isPublisherConfigDefined(pubConfig))
+        if (isPublisherConfigDefined(pubConfig))
         {
-            //properly defined mono config
+            // properly defined mono config
             CameraConfig camConfig = readCameraConfigFromParams("mono.camera");
-            if(isCameraConfigDefined(camConfig))
+            if (isCameraConfigDefined(camConfig))
             {
                 RCLCPP_INFO(this->get_logger(), "Initializing as MONO CAMERA. Serial#: %s", camConfig.serial.c_str());
                 openedCam = std::make_shared<MonoImagePublisher>(pubConfig, camConfig, it, cameras, postproc);
                 RCLCPP_INFO(this->get_logger(), "Opened camera with serial# %s", camConfig.serial.c_str());
-            } else
+            }
+            else
             {
                 throw std::runtime_error("Mono camera not properly defined in parameters!");
             }
-        } else
-        {   
-            //improperly defined mono config, but maybe the user wants stereo
+        }
+        else
+        {
+            // improperly defined mono config, but maybe the user wants stereo
             pubConfig = readPublisherConfigFromParams("stereo");
-            if(!isPublisherConfigDefined(pubConfig))
+            if (!isPublisherConfigDefined(pubConfig))
             {
                 throw std::runtime_error("No mono or stereo config was properly defined in parameters!");
             }
 
-            //properly defined stereo config
+            // properly defined stereo config
             CameraConfig
                 leftCamConfig = readCameraConfigFromParams("stereo.left"),
                 rightCamConfig = readCameraConfigFromParams("stereo.right");
-            
-            bool 
+
+            bool
                 leftCamDefined = isCameraConfigDefined(leftCamConfig),
                 rightCamDefined = isCameraConfigDefined(rightCamConfig);
 
-            if(leftCamDefined && rightCamDefined)
+            if (leftCamDefined && rightCamDefined)
             {
                 RCLCPP_INFO(this->get_logger(), "Initializing as STEREO CAMERA. Left serial#: %s, right serial#: %s", leftCamConfig.serial.c_str(), rightCamConfig.serial.c_str());
+
                 openedCam = std::make_shared<StereoImagePublisher>(pubConfig, leftCamConfig, rightCamConfig, it, cameras, postproc);
                 RCLCPP_INFO(this->get_logger(), "Opened camera with serial# %s as left camera", leftCamConfig.serial.c_str());
                 RCLCPP_INFO(this->get_logger(), "Opened camera with serial# %s as right camera", rightCamConfig.serial.c_str());
-            } else
+            }
+            else
             {
                 std::string
                     leftStatus = (leftCamDefined ? "good" : "bad"),
                     rightStatus = (rightCamDefined ? "good" : "bad");
-                
+
                 throw std::runtime_error("Stereo config improperly defined! Left: " + leftStatus + ", right: " + rightStatus);
             }
         }
@@ -125,47 +121,48 @@ class SpinnakerNode : public rclcpp::Node {
         RCLCPP_INFO(this->get_logger(), "Driver initialized");
     }
 
-
     void release()
     {
         RCLCPP_INFO(this->get_logger(), "Cleaning up");
 
         cameras.Clear();
 
-        if(thread)
+        if (thread)
         {
             thread->join();
         }
-        
-        if(openedCam)
+
+        if (openedCam)
         {
             openedCam->release();
         }
 
-        if(system)
+        if (system)
         {
             system->ReleaseInstance();
         }
     }
 
-
-    private:
+private:
     void processCamerasAsync()
     {
-        //this vector will store indices of cameras to attempt deinitialization and reinitialization after an iteration of the loop
-        std::vector<int> camerasToReinit; 
+        // this vector will store indices of cameras to attempt deinitialization and reinitialization after an iteration of the loop
+        std::vector<int> camerasToReinit;
 
-        while(rclcpp::ok())
+        while (rclcpp::ok())
         {
-            //instruct all cameras to publish images captured during this trigger
-            camMutex.lock();           
+            // instruct all cameras to publish images captured during this trigger
+            camMutex.lock();
             try
             {
+                // camTrigger->sendTrigger();
                 openedCam->readAndPublish(this->get_clock());
-            } catch(std::runtime_error& ex)
+            }
+            catch (std::runtime_error &ex)
             {
                 RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500, "std::runtime_error when updating %s: %s", openedCam->config().topic.c_str(), ex.what());
-            } catch(Spinnaker::Exception& ex)
+            }
+            catch (Spinnaker::Exception &ex)
             {
                 RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Spinnaker::Exception when updating %s: %s", openedCam->config().topic.c_str(), ex.what());
             }
@@ -184,21 +181,20 @@ class SpinnakerNode : public rclcpp::Node {
     std::mutex camMutex;
 };
 
-
 void listConnectedCameras()
 {
     std::cout << "Initializing Spinnaker" << std::endl;
     Spinnaker::SystemPtr system = Spinnaker::System::GetInstance();
     Spinnaker::CameraList cameras = system->GetCameras();
 
-    //print information about the cameras
+    // print information about the cameras
     const unsigned int numCameras = cameras.GetSize();
     std::cout << "Detected " << numCameras << " cameras." << std::endl;
-    for(size_t i = 0; i < numCameras; i++)
+    for (size_t i = 0; i < numCameras; i++)
     {
         Spinnaker::CameraPtr camera = cameras.GetByIndex(i);
         Spinnaker::GenApi::CStringPtr cStringSerial = camera->GetTLDeviceNodeMap().GetNode("DeviceSerialNumber");
-        if(Spinnaker::GenApi::IsReadable(cStringSerial))
+        if (Spinnaker::GenApi::IsReadable(cStringSerial))
         {
             Spinnaker::GenICam::gcstring cameraSerial = cStringSerial->GetValue();
             std::cout << "Device " << i << "'s serial#: " << cameraSerial.c_str() << std::endl;
@@ -209,19 +205,19 @@ void listConnectedCameras()
     system->ReleaseInstance();
 }
 
-
 int main(int argc, char **argv)
 {
-    if(argc >= 2)
+    if (argc >= 2)
     {
-        if(strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
+        if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
         {
             std::cout << "Usage: ./SpinnakerNode [-h][--help] [-l][--list]\n";
             std::cout << "  Options:\n";
             std::cout << "   -h, --help: Display this help text and exit\n";
             std::cout << "   -l, --list: List connected cameras and their serial numbers and exit." << std::endl;
             return 0;
-        } else if(strcmp(argv[1], "-l") == 0 || strcmp(argv[1], "--list") == 0)
+        }
+        else if (strcmp(argv[1], "-l") == 0 || strcmp(argv[1], "--list") == 0)
         {
             listConnectedCameras();
             return 0;
@@ -232,23 +228,25 @@ int main(int argc, char **argv)
     std::shared_ptr<SpinnakerNode> node = std::make_shared<SpinnakerNode>();
     image_transport::ImageTransport it(node);
 
-    try 
+    try
     {
         node->init(it);
-    } catch(std::runtime_error& ex)
-    {
-        RCLCPP_ERROR(node->get_logger(), ex.what());
-        rclcpp::shutdown();
-        node->release();
-        exit(1);
-    } catch(std::invalid_argument& ex)
+    }
+    catch (std::runtime_error &ex)
     {
         RCLCPP_ERROR(node->get_logger(), ex.what());
         rclcpp::shutdown();
         node->release();
         exit(1);
     }
-    
+    catch (std::invalid_argument &ex)
+    {
+        RCLCPP_ERROR(node->get_logger(), ex.what());
+        rclcpp::shutdown();
+        node->release();
+        exit(1);
+    }
+
     rclcpp::spin(node);
     rclcpp::shutdown();
     node->release();
